@@ -13,6 +13,13 @@ interface Props {
 	descriptionClassName?: string;
 	showCloseButton?: boolean;
 }
+/**
+ * Reusable dialog/modal component built on top of
+ * shadcn/ui dialog primitives.
+ *
+ * Supports custom titles, descriptions,
+ * scrollable content, and close button control.
+ */
 
 const Dialog: FC<Props> = ({
 	className,

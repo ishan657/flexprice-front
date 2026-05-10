@@ -1,6 +1,7 @@
 import * as React from 'react';
-import { FC, ReactNode } from 'react';
+import { FC, ReactNode, useRef } from 'react';
 import { cn } from '@/lib/utils';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 // Types and Interfaces
 interface BaseColumnData<T> {
@@ -37,22 +38,17 @@ export interface FlexpriceTableProps<T> {
 	showEmptyRow?: boolean;
 	hideBottomBorder?: boolean;
 	variant?: 'default' | 'no-bordered';
-	/** Applied to the inner `<table>` (e.g. `table-fixed` for predictable column widths). */
 	tableClassName?: string;
+	virtualized?: boolean;
+	estimatedRowHeight?: number;
 }
 
 // Helper Functions
 const isInteractiveElement = (element: HTMLElement | null): boolean => {
 	if (!element) return false;
-
-	// Check for data-interactive attribute
 	if (element.getAttribute('data-interactive') === 'true') return true;
-
-	// Check for interactive elements
 	const interactiveElements = ['button', 'a', 'input', 'select', 'textarea'];
 	if (element.tagName && interactiveElements.includes(element.tagName.toLowerCase())) return true;
-
-	// Check parent elements
 	return element.closest('[data-interactive="true"]') !== null;
 };
 
@@ -77,27 +73,27 @@ TableBody.displayName = 'TableBody';
 const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTMLTableRowElement>>(({ className, ...props }, ref) => (
 	<tr
 		ref={ref}
-		className={cn(
-			'border-b border-[#E2E8F0] h-[36px] transition-colors hover:bg-muted/50',
-			'align-middle', // Vertically align middle
-			className,
-		)}
+		className={cn('border-b border-[#E2E8F0] h-[36px] transition-colors hover:bg-muted/50', 'align-middle', className)}
 		{...props}
 	/>
 ));
 TableRow.displayName = 'TableRow';
 
-interface CustomThHTMLAttributes extends React.ThHTMLAttributes<HTMLTableCellElement> {
-	width?: number | string;
-}
-
 const TableHead = React.forwardRef<
 	HTMLTableCellElement,
-	Omit<CustomThHTMLAttributes, 'align'> & { align?: 'left' | 'center' | 'right' | 'justify'; variant?: 'default' | 'no-bordered' }
+	Omit<React.ThHTMLAttributes<HTMLTableCellElement>, 'align' | 'width'> & {
+		align?: 'left' | 'center' | 'right' | 'justify';
+		variant?: 'default' | 'no-bordered';
+		width?: number | string;
+	}
 >(({ className, style, align = 'left', width, variant = 'default', ...props }, ref) => (
 	<th
 		ref={ref}
-		style={{ textAlign: align, width: width ? (typeof width === 'number' ? `${width}px` : width) : undefined, ...style }}
+		style={{
+			textAlign: align,
+			width: width ? (typeof width === 'number' ? `${width}px` : width) : undefined,
+			...style,
+		}}
 		className={cn(
 			'h-12 px-4 text-[14px] font-medium text-[#64748B]',
 			`text-${align}`,
@@ -123,7 +119,6 @@ const TableCell = React.forwardRef<
 ));
 TableCell.displayName = 'TableCell';
 
-// Cell Content Components
 const CellContent: FC<{
 	row: any;
 	column: ColumnData<any>;
@@ -148,10 +143,9 @@ const CellContent: FC<{
 		);
 	}
 
-	return <div className={contentWrapperClasses}>{row[name]}</div>;
+	return <div className={contentWrapperClasses}>{row[name as string]}</div>;
 };
 
-// Main FlexpriceTable Component
 const FlexpriceTable: FC<FlexpriceTableProps<any>> = ({
 	onRowClick,
 	columns,
@@ -160,28 +154,29 @@ const FlexpriceTable: FC<FlexpriceTableProps<any>> = ({
 	hideBottomBorder = true,
 	variant = 'default',
 	tableClassName,
+	virtualized = false,
+	estimatedRowHeight = 56,
 }) => {
+	const parentRef = useRef<HTMLDivElement>(null);
+
+	const rowVirtualizer = useVirtualizer({
+		count: virtualized ? data.length : 0,
+		getScrollElement: () => parentRef.current,
+		estimateSize: () => estimatedRowHeight,
+		overscan: 8,
+	});
+
 	const handleRowClick = (row: any, e: React.MouseEvent) => {
 		const target = e.target as HTMLElement;
-
-		// Don't trigger row click if the click was on or within an interactive element
-		if (isInteractiveElement(target)) {
-			return;
-		}
-
+		if (isInteractiveElement(target)) return;
 		onRowClick?.(row);
 	};
 
 	const handleCellClick = (e: React.MouseEvent, row: any, onCellClick?: (row: any, e: React.MouseEvent) => void) => {
 		const target = e.target as HTMLElement;
-
-		// Don't trigger cell click if the click was on or within an interactive element
-		if (isInteractiveElement(target)) {
-			return;
-		}
-
+		if (isInteractiveElement(target)) return;
 		if (onCellClick) {
-			e.stopPropagation(); // Stop row click if cell has click handler
+			e.stopPropagation();
 			onCellClick(row, e);
 		}
 	};
@@ -261,7 +256,6 @@ const FlexpriceTable: FC<FlexpriceTableProps<any>> = ({
 
 	const renderEmptyRow = () => {
 		if (!showEmptyRow || data.length > 0) return null;
-
 		return (
 			<TableRow className={cn(hideBottomBorder && 'border-b-0', variant === 'no-bordered' && 'border-b-0')}>
 				{columns.map(({ flex = 1, width, textColor = 'inherit', align = 'left', hideOnEmpty }, colIndex) => {
@@ -296,10 +290,50 @@ const FlexpriceTable: FC<FlexpriceTableProps<any>> = ({
 			)}>
 			<Table className={tableClassName}>
 				{renderTableHeader()}
-				<TableBody>
-					{data.map((row, rowIndex) => renderTableRow(row, rowIndex))}
-					{renderEmptyRow()}
-				</TableBody>
+
+				{virtualized ? (
+					<div ref={parentRef} className='h-[600px] overflow-auto'>
+						<div
+							style={{
+								height: rowVirtualizer.getTotalSize(),
+								width: '100%',
+								position: 'relative',
+							}}>
+							{rowVirtualizer.getVirtualItems().map((virtualRow) => {
+								const row = data[virtualRow.index];
+								if (!row) return null;
+								return (
+									<div
+										key={virtualRow.key}
+										ref={rowVirtualizer.measureElement}
+										data-index={virtualRow.index}
+										style={{
+											position: 'absolute',
+											top: 0,
+											left: 0,
+											width: '100%',
+											transform: `translateY(${virtualRow.start}px)`,
+										}}>
+										{/* 
+              FIX: Removed the nested <Table> and <TableBody>.
+              We now render the row directly. We wrap it in a <table> 
+              only if we need to preserve table-layout spacing, 
+              but using a div with 'w-full' is cleaner for virtualization.
+            */}
+										<div className={cn('flex w-full border-b border-[#E2E8F0]', tableClassName)}>
+											{renderTableRow(row, virtualRow.index)}
+										</div>
+									</div>
+								);
+							})}
+						</div>
+					</div>
+				) : (
+					<TableBody>
+						{data.map((row, rowIndex) => renderTableRow(row, rowIndex))}
+						{renderEmptyRow()}
+					</TableBody>
+				)}
 			</Table>
 		</div>
 	);

@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
 import { FC, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Button } from '../Button';
+import Button from '@/components/atoms/Button/Button';
 
 interface ModalProps {
 	isOpen: boolean;

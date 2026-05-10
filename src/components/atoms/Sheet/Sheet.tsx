@@ -12,6 +12,13 @@ interface Props {
 	className?: string;
 	size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | 'full';
 }
+/**
+ * Reusable sliding sheet/drawer component built on top
+ * of shadcn/ui sheet primitives.
+ *
+ * Supports configurable sizes, custom triggers,
+ * scrollable content handling, and controlled open state.
+ */
 
 const Sheet: FC<Props> = ({ children, trigger, description, title, isOpen, onOpenChange, className, size = 'sm' }) => {
 	const contentRef = useRef<HTMLDivElement>(null);

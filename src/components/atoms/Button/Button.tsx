@@ -39,7 +39,11 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 	suffixIcon?: ReactNode;
 	prefixIcon?: ReactNode;
 }
-
+/**
+ * Reusable Button component supporting
+ * variants, sizes, loading states,
+ * and optional icons.
+ */
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 	({ className, variant, size, asChild = false, isLoading = false, children, suffixIcon, prefixIcon, ...props }, ref) => {
 		const Comp = asChild ? Slot : 'button';

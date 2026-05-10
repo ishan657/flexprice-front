@@ -1,6 +1,6 @@
 import React from 'react';
 import { Copy } from 'lucide-react';
-import { Button } from '../Button';
+import Button from '@/components/atoms/Button/Button';
 import { copyToClipboard } from '@/utils/common/helper_functions';
 import { cn } from '@/lib/utils';
 

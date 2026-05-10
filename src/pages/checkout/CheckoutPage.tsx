@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router';
 import { motion } from 'framer-motion';
 import { AlertCircle, Clock, CreditCard, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/atoms/Button';
+import Button from '@/components/atoms/Button/Button';
 import { PADDLE_URL_PARAMS, decodeCheckoutToken, isTokenExpired, removePaddleParamsFromUrl } from '@/core/paddle';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
